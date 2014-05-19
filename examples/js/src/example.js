@@ -10,14 +10,8 @@ document.body.appendChild(setupContainer);
 var setupViewport = new Viewport(setupContainer);
 new Trackball(setupViewport);
 
-var hullContainer = document.createElement('div');
-hullContainer.classList.add('viewport');
-document.body.appendChild(hullContainer);
-var hullViewport = new Viewport(hullContainer);
-new Trackball(hullViewport);
-
 var cube = [
-  new Vector(10,0,0),
+  new Vector(0,0,0),
   new Vector(10,0,0),
   new Vector(10,20,0),
   new Vector(0,20,0),
@@ -39,5 +33,19 @@ setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
 var mesh = setup.tetrahedron;
 qhull.assignPointsToFaces(cube, mesh);
 
-qhull.popNext(mesh);
-hullViewport.addMesh(mesh, 0x0000ff);
+var popped, i = 0;
+do {
+  popped = qhull.popNext(mesh);
+  console.log(popped);
+  if (popped) {
+    var hullContainer = document.createElement('div');
+    hullContainer.classList.add('viewport');
+    document.body.appendChild(hullContainer);
+    var hullViewport = new Viewport(hullContainer);
+    new Trackball(hullViewport);
+    hullViewport.addMesh(mesh, 0x0000ff);
+    hullViewport.addPoints([popped], 0.5, 0xff0000);
+  }
+
+  ++i;
+} while (popped && i < 5);

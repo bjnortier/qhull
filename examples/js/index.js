@@ -11,14 +11,8 @@ document.body.appendChild(setupContainer);
 var setupViewport = new Viewport(setupContainer);
 new Trackball(setupViewport);
 
-var hullContainer = document.createElement('div');
-hullContainer.classList.add('viewport');
-document.body.appendChild(hullContainer);
-var hullViewport = new Viewport(hullContainer);
-new Trackball(hullViewport);
-
 var cube = [
-  new Vector(10,0,0),
+  new Vector(0,0,0),
   new Vector(10,0,0),
   new Vector(10,20,0),
   new Vector(0,20,0),
@@ -40,8 +34,22 @@ setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
 var mesh = setup.tetrahedron;
 qhull.assignPointsToFaces(cube, mesh);
 
-qhull.popNext(mesh);
-hullViewport.addMesh(mesh, 0x0000ff);
+var popped, i = 0;
+do {
+  popped = qhull.popNext(mesh);
+  console.log(popped);
+  if (popped) {
+    var hullContainer = document.createElement('div');
+    hullContainer.classList.add('viewport');
+    document.body.appendChild(hullContainer);
+    var hullViewport = new Viewport(hullContainer);
+    new Trackball(hullViewport);
+    hullViewport.addMesh(mesh, 0x0000ff);
+    hullViewport.addPoints([popped], 0.5, 0xff0000);
+  }
+
+  ++i;
+} while (popped && i < 5);
 },{"../../../lib/qhull":5,"../../../lib/vector":6,"./trackball":2,"./viewport":3}],2:[function(require,module,exports){
 
 function eventToPosition(event) {
@@ -415,9 +423,10 @@ module.exports.setup = function(points) {
 
   // Correct normal so that right-hand base normal points away from apex
   var base = apex.distance > 0 ? [a,b,c] : [a,c,b];
+  console.log(apex.distance);
 
   var tetrahedron = {
-    vertices: [a,b,c,apex.point],
+    vertices: base.concat(apex.point),
     faces: [{a:0, b:1, c:2}, {a:0, b:3, c:1}, {a:3, b:2, c:1}, {a:0, b:2, c:3}]
   };
   return {
@@ -431,7 +440,7 @@ module.exports.setup = function(points) {
 // Assign points to faces, by assigning point to first face it is in front of
 // Return an array of the same size as the mesh faces array, with the points
 // for that face
-module.exports.assignPointsToFaces = function(points, mesh) {
+function assignPointsToFaces(points, mesh) {
   var faces = mesh.faces.slice(0);
   var vertices = mesh.vertices.slice(0);
 
@@ -449,8 +458,9 @@ module.exports.assignPointsToFaces = function(points, mesh) {
       }
     }
   }
-  return faces;
-};
+}
+
+module.exports.assignPointsToFaces = assignPointsToFaces;
 
 function findAdjacentFaceIndices(mesh, faceIndices) {
   var sharedVertices = faceIndices.reduce(function(acc, i) {
@@ -533,9 +543,10 @@ module.exports.popNext = function(mesh) {
   // Find the next face in the mesh with points
   for (var i = 0; i < mesh.faces.length; ++i) {
     var face = mesh.faces[i];
-    if (face.points && face.points.length) {
+    var points = face.points;
+    if (points && points.length) {
       var plane = new Plane(mesh.vertices[face.a], mesh.vertices[face.b], mesh.vertices[face.c]);
-      var mostDistant = findMostDistantFromPlane(plane, face.points);
+      var mostDistant = findMostDistantFromPlane(plane, points);
       var lightFaces = findLightFaces(mostDistant.point, mesh, [i]);
       var horizonEdges = findHorizonEdges(mesh, lightFaces);
       console.log('lightFaces', lightFaces);
@@ -548,15 +559,22 @@ module.exports.popNext = function(mesh) {
       });
 
       // Remove the light faces from the mesh
-      mesh.faces.reduce(function(acc, f, i) {
+      mesh.faces = mesh.faces.reduce(function(acc, f, i) {
         if (lightFaces.indexOf(i) === -1) {
-          acc.push(i);
+          acc.push(f);
         }
         return acc;
       }, []);
-      return;
+
+      // Assign the remaining points to the new mesh
+      var remaining = points.slice(0);
+      remaining.splice(mostDistant.index, 1);
+      assignPointsToFaces(remaining, mesh);
+
+      return mostDistant.point;
     }
   }
+  return undefined;
 };
 },{"./plane":4,"./vector":6}],6:[function(require,module,exports){
 "use strict";
