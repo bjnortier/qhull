@@ -20,20 +20,10 @@ module.exports = function(grunt) {
           'test/**/*.js',
         ]
       },
-    },
-
-    watch: {
-      gruntfile: {
-        files: '<%= jshint.gruntfile.src %>',
-        tasks: ['jshint:gruntfile']
-      },
-      lib: {
-        files: '<%= jshint.lib.src %>',
-        tasks: ['jshint:lib', 'simplemocha:unit'],
-      },
-      unit: {
-        files: '<%= jshint.unit.src %>',
-        tasks: ['jshint:unit', 'simplemocha:unit'],
+      examples: {
+        src: [
+          'examples/js/src/*.js',
+        ]
       },
     },
 
@@ -51,12 +41,49 @@ module.exports = function(grunt) {
       },
     },
 
+    browserify: {
+      options: {
+        // debug: true,
+        shim: {
+          jquery: {
+            path: 'public/lib/jquery-2.1.0.min.js',
+            exports: '$'
+          },
+        },
+        external: ['jquery']
+      },
+      examples: {
+        files: {
+          'examples/js/index.js': ['examples/js/src/example.js'],
+        },
+      },
+    },
+
+    watch: {
+      gruntfile: {
+        files: '<%= jshint.gruntfile.src %>',
+        tasks: ['jshint:gruntfile']
+      },
+      lib: {
+        files: '<%= jshint.lib.src %>',
+        tasks: ['jshint:lib', 'simplemocha:unit', 'browserify:examples'],
+      },
+      unit: {
+        files: '<%= jshint.unit.src %>',
+        tasks: ['jshint:unit', 'simplemocha:unit'],
+      },
+      examples: {
+        files: '<%= jshint.examples.src %>',
+        tasks: ['jshint:examples', 'browserify:examples'],
+      },
+    },
 
   });
 
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-simple-mocha');
+  grunt.loadNpmTasks('grunt-browserify');
 
   // Unit testing
   grunt.registerTask('unit', ['jshint:lib','jshint:unit', 'simplemocha:unit']);

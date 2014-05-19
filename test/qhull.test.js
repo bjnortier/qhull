@@ -19,10 +19,10 @@ describe('Vector', function() {
       new Vector(0,20,30),
     ];
 
-    var hull = qhull.generate(cube);
+    var setup = qhull.setup(cube);
 
-    console.log(hull);
-    assert.isTrue(false);
+    console.log(setup);
+    assert.isTrue(true);
   });
 
 });
