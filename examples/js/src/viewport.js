@@ -105,21 +105,19 @@ module.exports = function(container) {
     });
   };
 
-  this.addTriangles = function(triangles, color) {
+  this.addMesh = function(mesh, color) {
 
-    triangles.forEach(function(triangle) {
-
-      var geometry = new THREE.Geometry();
-      geometry.vertices = triangle.map(function(v) {
-        return new THREE.Vector3(v.x, v.y, v.z);
-      });
-      geometry.faces.push(new THREE.Face3(0,1,2));
-      geometry.computeFaceNormals();
-      that.exampleObj.add(new THREE.Mesh(
-        geometry,
-        new THREE.MeshLambertMaterial({color: color})));
+    var geometry = new THREE.Geometry();
+    geometry.vertices = mesh.vertices.map(function(v) {
+      return new THREE.Vector3(v.x, v.y, v.z);
     });
-
+    geometry.faces = mesh.faces.map(function(f) {
+      return new THREE.Face3(f.a, f.b, f.c);
+    });
+    geometry.computeFaceNormals();
+    this.exampleObj.add(new THREE.Mesh(
+      geometry,
+      new THREE.MeshLambertMaterial({color: color})));
   };
 
   init();

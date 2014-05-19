@@ -5,14 +5,20 @@ var Trackball = require('./trackball');
 var Vector = require('../../../lib/vector');
 var qhull = require('../../../lib/qhull');
 
-var container = document.createElement('div');
-container.classList.add('viewport');
-document.body.appendChild(container);
-var viewport = new Viewport(container);
-new Trackball(viewport);
+var setupContainer = document.createElement('div');
+setupContainer.classList.add('viewport');
+document.body.appendChild(setupContainer);
+var setupViewport = new Viewport(setupContainer);
+new Trackball(setupViewport);
+
+var hullContainer = document.createElement('div');
+hullContainer.classList.add('viewport');
+document.body.appendChild(hullContainer);
+var hullViewport = new Viewport(hullContainer);
+new Trackball(hullViewport);
 
 var cube = [
-  new Vector(5,0,0),
+  new Vector(10,0,0),
   new Vector(10,0,0),
   new Vector(10,20,0),
   new Vector(0,20,0),
@@ -22,21 +28,20 @@ var cube = [
   new Vector(0,20,30),
 ];
 
-viewport.addPoints(cube, 0.5, 0x00ff00);
+setupViewport.addPoints(cube, 0.5, 0x00ff00);
 
 var setup = qhull.setup(cube);
-viewport.addPoints(setup.base, 1.0, 0x0000ff);
-viewport.addPoints([setup.apex.point], 1.0, 0xff0000);
 console.log(setup);
 
-var tetrahedron = [
-  setup.base,
-  [setup.base[0], setup.apex.point, setup.base[1]],
-  [setup.apex.point, setup.base[2], setup.base[1]],
-  [setup.base[0], setup.base[2], setup.apex.point],
-];
-viewport.addTriangles(tetrahedron, 0x0000ff);
+setupViewport.addPoints(setup.base, 1.0, 0x0000ff);
+setupViewport.addPoints([setup.apex.point], 1.0, 0xff0000);
+setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
 
+var mesh = setup.tetrahedron;
+qhull.assignPointsToFaces(cube, mesh);
+
+qhull.popNext(mesh);
+hullViewport.addMesh(mesh, 0x0000ff);
 },{"../../../lib/qhull":5,"../../../lib/vector":6,"./trackball":2,"./viewport":3}],2:[function(require,module,exports){
 
 function eventToPosition(event) {
@@ -257,21 +262,19 @@ module.exports = function(container) {
     });
   };
 
-  this.addTriangles = function(triangles, color) {
+  this.addMesh = function(mesh, color) {
 
-    triangles.forEach(function(triangle) {
-
-      var geometry = new THREE.Geometry();
-      geometry.vertices = triangle.map(function(v) {
-        return new THREE.Vector3(v.x, v.y, v.z);
-      });
-      geometry.faces.push(new THREE.Face3(0,1,2));
-      geometry.computeFaceNormals();
-      that.exampleObj.add(new THREE.Mesh(
-        geometry,
-        new THREE.MeshLambertMaterial({color: color})));
+    var geometry = new THREE.Geometry();
+    geometry.vertices = mesh.vertices.map(function(v) {
+      return new THREE.Vector3(v.x, v.y, v.z);
     });
-
+    geometry.faces = mesh.faces.map(function(f) {
+      return new THREE.Face3(f.a, f.b, f.c);
+    });
+    geometry.computeFaceNormals();
+    this.exampleObj.add(new THREE.Mesh(
+      geometry,
+      new THREE.MeshLambertMaterial({color: color})));
   };
 
   init();
@@ -368,19 +371,22 @@ function findMostDistantToLine(points, a, b) {
 
 // Find the initial tetrahedron apex as the point furthest
 // from the base plane
-function findApex(basePlane, points) {
+function findMostDistantFromPlane(basePlane, points) {
   var maxDistance = 0;
   var point;
+  var index;
   for (var i = 0; i < points.length; ++i) {
     var distance = basePlane.pointDistance(points[i]);
     if (Math.abs(distance) > Math.abs(maxDistance)) {
       maxDistance = distance;
       point = points[i];
+      index = i;
     }
   }
   return {
     point: point,
-    distance: maxDistance
+    distance: maxDistance,
+    index: index,
   };
 }
 
@@ -405,26 +411,153 @@ module.exports.setup = function(points) {
 
   // Correct normal for positive apex distance
   var basePlane = new Plane(a,c,b);
-  var apex = findApex(basePlane, points);
+  var apex = findMostDistantFromPlane(basePlane, points);
 
-  // Correct normal so that base points away from apex
-  if (apex.distance > 0) {
-    return {
-      base: [a,b,c],
-      apex: apex,
-    };
-  } else {
-    return {
-      base: [a,c,b],
-      apex: apex,
-    };
-  }
+  // Correct normal so that right-hand base normal points away from apex
+  var base = apex.distance > 0 ? [a,b,c] : [a,c,b];
+
+  var tetrahedron = {
+    vertices: [a,b,c,apex.point],
+    faces: [{a:0, b:1, c:2}, {a:0, b:3, c:1}, {a:3, b:2, c:1}, {a:0, b:2, c:3}]
+  };
+  return {
+    base: base,
+    apex: apex,
+    tetrahedron: tetrahedron,
+  };
 
 };
 
+// Assign points to faces, by assigning point to first face it is in front of
+// Return an array of the same size as the mesh faces array, with the points
+// for that face
+module.exports.assignPointsToFaces = function(points, mesh) {
+  var faces = mesh.faces.slice(0);
+  var vertices = mesh.vertices.slice(0);
 
+  for (var i = 0; i < points.length; ++i) {
+    var point = points[i];
+    for (var k = 0; k < faces.length; ++k) {
+      var face = faces[k];
+      var plane = new Plane(vertices[face.a], vertices[face.b], vertices[face.c]);
+      if (plane.pointDistance(point) > 0) {
+        if (!faces[k].hasOwnProperty('points')) {
+          faces[k].points = [];
+        }
+        faces[k].points.push(point);
+        break;
+      }
+    }
+  }
+  return faces;
+};
 
+function findAdjacentFaceIndices(mesh, faceIndices) {
+  var sharedVertices = faceIndices.reduce(function(acc, i) {
+    var f = mesh.faces[i];
+    if (acc.indexOf(f.a) === -1) {
+      acc.push(f.a);
+    }
+    if (acc.indexOf(f.b) === -1) {
+      acc.push(f.b);
+    }
+    if (acc.indexOf(f.c) === -1) {
+      acc.push(f.c);
+    }
+    return acc;
+  }, []);
+  var faceSet = [];
+  for (var i = 0; i < mesh.faces.length; ++i) {
+    var face = mesh.faces[i];
+    if ((sharedVertices.indexOf(face.a) !== -1) ||
+        (sharedVertices.indexOf(face.b) !== -1) ||
+        (sharedVertices.indexOf(face.c) !== -1)) {
+      faceSet.push(i);
+    }
+  }
+  return faceSet;
+}
 
+// Find faces that can be seen from the point (i.e. positive distance from the face plane)
+function findLightFaces(point, mesh, lightFaces) {
+  var adjacentFaceIndices = findAdjacentFaceIndices(mesh, lightFaces);
+  var added;
+  do {
+    for (var i = 0; i < adjacentFaceIndices.length; ++i) {
+      var face = mesh.faces[adjacentFaceIndices[i]];
+      var plane = new Plane(mesh.vertices[face.a], mesh.vertices[face.b], mesh.vertices[face.c]);
+      if ((plane.pointDistance(point) > 0) && (lightFaces.indexOf(i) === -1)) {
+        lightFaces.push(i);
+        added = true;
+      }
+    }
+    added = false;
+  } while (added);
+  return lightFaces;
+}
+
+function addEdgeToCount(a,b,count) {
+  var key = Math.min(a,b) + '_' + Math.max(a,b);
+  if (!count[key]) {
+    count[key] = {
+      n: 1,
+      originalOrder: [a,b],
+    };
+  } else {
+    ++count[key].n;
+  }
+}
+
+// Find the horizon edges, which are edges that only bound a single light face
+function findHorizonEdges(mesh, lightFaceIndices) {
+  var edgeCounts = {};
+  for (var i = 0; i < lightFaceIndices.length; ++i) {
+    var face = mesh.faces[lightFaceIndices[i]];
+    addEdgeToCount(face.a, face.b, edgeCounts);
+    addEdgeToCount(face.b, face.c, edgeCounts);
+    addEdgeToCount(face.c, face.a, edgeCounts);
+  }
+  var horizonEdges = [];
+
+  // The original normal ordering is maintained in the e3dge count and used to construct
+  // horizon
+  for (var key in edgeCounts) {
+    if (edgeCounts[key].n === 1) {
+      horizonEdges.push(edgeCounts[key].originalOrder);
+    }
+  }
+  return horizonEdges;
+}
+
+module.exports.popNext = function(mesh) {
+  // Find the next face in the mesh with points
+  for (var i = 0; i < mesh.faces.length; ++i) {
+    var face = mesh.faces[i];
+    if (face.points && face.points.length) {
+      var plane = new Plane(mesh.vertices[face.a], mesh.vertices[face.b], mesh.vertices[face.c]);
+      var mostDistant = findMostDistantFromPlane(plane, face.points);
+      var lightFaces = findLightFaces(mostDistant.point, mesh, [i]);
+      var horizonEdges = findHorizonEdges(mesh, lightFaces);
+      console.log('lightFaces', lightFaces);
+      console.log('horizonEdges', horizonEdges);
+
+      // Create new faces using the point and the horinzon edges
+      var newVertexIndex = mesh.vertices.push(mostDistant.point) - 1;
+      horizonEdges.forEach(function(edge) {
+        mesh.faces.push({a: edge[0], b: edge[1], c: newVertexIndex});
+      });
+
+      // Remove the light faces from the mesh
+      mesh.faces.reduce(function(acc, f, i) {
+        if (lightFaces.indexOf(i) === -1) {
+          acc.push(i);
+        }
+        return acc;
+      }, []);
+      return;
+    }
+  }
+};
 },{"./plane":4,"./vector":6}],6:[function(require,module,exports){
 "use strict";
 
