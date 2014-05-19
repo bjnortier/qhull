@@ -98,7 +98,7 @@ module.exports = function(container) {
 
     points.forEach(function(point) {
       var mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(size, size, size),
+        new THREE.SphereGeometry(size),
         new THREE.MeshLambertMaterial({color: color}));
       mesh.position = new THREE.Vector3(point.x, point.y, point.z);
       that.exampleObj.add(mesh);
@@ -115,9 +115,12 @@ module.exports = function(container) {
       return new THREE.Face3(f.a, f.b, f.c);
     });
     geometry.computeFaceNormals();
-    this.exampleObj.add(new THREE.Mesh(
-      geometry,
-      new THREE.MeshLambertMaterial({color: color})));
+    this.exampleObj.add(
+      THREE.SceneUtils.createMultiMaterialObject(geometry, [
+        new THREE.MeshLambertMaterial({color: color, transparent: true, opacity: 0.5}),
+        new THREE.MeshBasicMaterial({color: color, wireframe: true, linewidth: 5}),
+      ]));
+
   };
 
   init();

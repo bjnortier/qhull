@@ -11,7 +11,7 @@ document.body.appendChild(setupContainer);
 var setupViewport = new Viewport(setupContainer);
 new Trackball(setupViewport);
 
-var cube = [
+var points = [
   new Vector(0,0,0),
   new Vector(10,0,0),
   new Vector(10,20,0),
@@ -22,22 +22,27 @@ var cube = [
   new Vector(0,20,30),
 ];
 
-setupViewport.addPoints(cube, 0.5, 0x00ff00);
+points = [];
+for (var i = 0; i < 20; ++i) {
+  points.push(new Vector(Math.random()*20, Math.random()*20, Math.random()*20));
+}
 
-var setup = qhull.setup(cube);
+setupViewport.addPoints(points, 0.2, 0x00ff00);
+
+var setup = qhull.setup(points);
 console.log(setup);
 
-setupViewport.addPoints(setup.base, 1.0, 0x0000ff);
-setupViewport.addPoints([setup.apex.point], 1.0, 0xff0000);
+setupViewport.addPoints(setup.base, 0.5, 0x0000ff);
+setupViewport.addPoints([setup.apex.point], 0.5, 0xff0000);
 setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
 
 var mesh = setup.tetrahedron;
-qhull.assignPointsToFaces(cube, mesh);
+qhull.assignPointsToFaces(points, mesh);
 
-var popped, i = 0;
+var popped;
 do {
+
   popped = qhull.popNext(mesh);
-  console.log(popped);
   if (popped) {
     var hullContainer = document.createElement('div');
     hullContainer.classList.add('viewport');
@@ -45,11 +50,19 @@ do {
     var hullViewport = new Viewport(hullContainer);
     new Trackball(hullViewport);
     hullViewport.addMesh(mesh, 0x0000ff);
+
+    var remaining = mesh.faces.reduce(function(acc, face) {
+      if (face.points) {
+        acc = acc.concat(face.points);
+      }
+      return acc;
+    }, []);
+
+    hullViewport.addPoints(remaining, 0.2, 0x00ff00);
     hullViewport.addPoints([popped], 0.5, 0xff0000);
   }
 
-  ++i;
-} while (popped && i < 5);
+} while (popped);
 },{"../../../lib/qhull":5,"../../../lib/vector":6,"./trackball":2,"./viewport":3}],2:[function(require,module,exports){
 
 function eventToPosition(event) {
@@ -263,7 +276,7 @@ module.exports = function(container) {
 
     points.forEach(function(point) {
       var mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(size, size, size),
+        new THREE.SphereGeometry(size),
         new THREE.MeshLambertMaterial({color: color}));
       mesh.position = new THREE.Vector3(point.x, point.y, point.z);
       that.exampleObj.add(mesh);
@@ -280,9 +293,12 @@ module.exports = function(container) {
       return new THREE.Face3(f.a, f.b, f.c);
     });
     geometry.computeFaceNormals();
-    this.exampleObj.add(new THREE.Mesh(
-      geometry,
-      new THREE.MeshLambertMaterial({color: color})));
+    this.exampleObj.add(
+      THREE.SceneUtils.createMultiMaterialObject(geometry, [
+        new THREE.MeshLambertMaterial({color: color, transparent: true, opacity: 0.5}),
+        new THREE.MeshBasicMaterial({color: color, wireframe: true, linewidth: 5}),
+      ]));
+
   };
 
   init();
@@ -494,10 +510,11 @@ function findLightFaces(point, mesh, lightFaces) {
   var added;
   do {
     for (var i = 0; i < adjacentFaceIndices.length; ++i) {
-      var face = mesh.faces[adjacentFaceIndices[i]];
+      var adjacentFaceIndex = adjacentFaceIndices[i];
+      var face = mesh.faces[adjacentFaceIndex];
       var plane = new Plane(mesh.vertices[face.a], mesh.vertices[face.b], mesh.vertices[face.c]);
-      if ((plane.pointDistance(point) > 0) && (lightFaces.indexOf(i) === -1)) {
-        lightFaces.push(i);
+      if ((plane.pointDistance(point) > 0) && (lightFaces.indexOf(adjacentFaceIndex) === -1)) {
+        lightFaces.push(adjacentFaceIndex);
         added = true;
       }
     }
@@ -549,8 +566,6 @@ module.exports.popNext = function(mesh) {
       var mostDistant = findMostDistantFromPlane(plane, points);
       var lightFaces = findLightFaces(mostDistant.point, mesh, [i]);
       var horizonEdges = findHorizonEdges(mesh, lightFaces);
-      console.log('lightFaces', lightFaces);
-      console.log('horizonEdges', horizonEdges);
 
       // Create new faces using the point and the horinzon edges
       var newVertexIndex = mesh.vertices.push(mostDistant.point) - 1;
@@ -566,9 +581,15 @@ module.exports.popNext = function(mesh) {
         return acc;
       }, []);
 
-      // Assign the remaining points to the new mesh
+      // The remaining points are the point of the current face, with the current
+      // point removed, and with the points of the lightfaces added
       var remaining = points.slice(0);
       remaining.splice(mostDistant.index, 1);
+      lightFaces.forEach(function(f) {
+        if (f.points) {
+          remaining.concat(f.points);
+        }
+      });
       assignPointsToFaces(remaining, mesh);
 
       return mostDistant.point;
