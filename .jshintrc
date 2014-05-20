@@ -19,6 +19,7 @@
     "window": false,
     "requestAnimationFrame": false,
     "THREE": false,
+    "$": false,
     "describe": false,
     "it": false
   }

@@ -2,17 +2,21 @@
 module.exports = function(container) {
 
   var camera, renderer, light;
-  var containerWidth = 400, containerHeight = 400;
-
   var that = this;
   that.container = container;
 
+  function onWindowResize() {
+    var containerWidth = $(container).width();
+    container.style.height = containerWidth + 'px';
+    camera.aspect = 1.0;
+    camera.updateProjectionMatrix();
+    renderer.setSize(containerWidth-1, containerWidth-1);
+    return containerWidth;
+  }
+
   function init() {
 
-    container.style.width  = containerWidth + 'px';
-    container.style.height = containerHeight + 'px';
-
-    camera = new THREE.PerspectiveCamera(70, containerWidth / containerHeight, 0.1, 10000 );
+    camera = new THREE.PerspectiveCamera(70, 1.0, 0.1, 10000 );
     that.camera = camera;
     camera.position.z = 40;
     camera.position.x = 40;
@@ -49,19 +53,14 @@ module.exports = function(container) {
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.sortObjects = false;
-    renderer.setSize(containerWidth, containerHeight);
     renderer.setClearColor(0xffffff, 1);
     container.appendChild(renderer.domElement);
 
     window.addEventListener('resize', onWindowResize, false);
-
+    onWindowResize();
   }
 
-  function onWindowResize() {
-    camera.aspect = containerWidth/containerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(containerWidth, containerHeight);
-  }
+
 
   function animate() {
     requestAnimationFrame(animate);
@@ -109,14 +108,6 @@ module.exports = function(container) {
       particles,
       pMaterial);
     that.exampleObj.add(particleSystem);
-
-    // points.forEach(function(point) {
-    //   var mesh = new THREE.Mesh(
-    //     new THREE.SphereGeometry(size),
-    //     new THREE.MeshLambertMaterial({color: color}));
-    //   mesh.position = new THREE.Vector3(
-    //   that.exampleObj.add(mesh);
-    // });
   };
 
   this.addMesh = function(mesh, color) {
@@ -134,7 +125,12 @@ module.exports = function(container) {
         new THREE.MeshLambertMaterial({color: color, transparent: true, opacity: 0.5}),
         new THREE.MeshBasicMaterial({color: color, wireframe: true, linewidth: 5}),
       ]));
+  };
 
+  this.clear = function() {
+    this.scene.remove(this.exampleObj);
+    this.exampleObj = new THREE.Object3D();
+    this.scene.add(this.exampleObj);
   };
 
   init();

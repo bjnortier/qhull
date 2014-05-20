@@ -5,85 +5,116 @@ var Trackball = require('./trackball');
 var Vector = require('../../../lib/vector');
 var qhull = require('../../../lib/qhull');
 
-var setupContainer = document.createElement('div');
-setupContainer.classList.add('viewport');
-document.body.appendChild(setupContainer);
-var setupViewport = new Viewport(setupContainer);
-new Trackball(setupViewport);
+var beforeViewport = new Viewport($('div.before')[0]);
+var afterViewport = new Viewport($('div.after')[0]);
+new Trackball([beforeViewport, afterViewport]);
 
-// var points = [
-//   new Vector(0,0,0),
-//   new Vector(10,0,0),
-//   new Vector(10,20,0),
-//   new Vector(0,20,0),
-//   new Vector(0,0,30),
-//   new Vector(10,0,30),
-//   new Vector(10,20,30),
-//   new Vector(0,20,30),
-// ];
+var mesh, points;
 
-var points = [];
-for (var i = 0; i < 1000; ++i) {
-  points.push(new Vector(Math.random()*20-10, Math.random()*20-10, Math.random()*20-10));
+function randomize() {
+  beforeViewport.clear();
+  afterViewport.clear();
+
+  var N = parseInt($('#n_points').val() || 10);
+  points = [];
+  for (var i = 0; i < N; ++i) {
+    points.push(new Vector(Math.random()*20-10, Math.random()*20-10, Math.random()*20-10));
+  }
+  beforeViewport.addPoints(points, 0.5, 0x009900);
+  mesh = qhull.init(points);
+  afterViewport.addMesh(mesh, 0x0000ff);
+  afterViewport.addPoints(points, 0.5, 0x009900);
 }
 
-setupViewport.addPoints(points, 0.5, 0x009900);
-
-var setup = qhull.setup(points);
-console.log(setup);
-var mesh = setup.tetrahedron;
-
-setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
-var remaining = mesh.faces.reduce(function(acc, face) {
-  if (face.points) {
-    acc = acc.concat(face.points);
-  }
-  return acc;
-}, []);
-
-setupViewport.addPoints(remaining, 0.5, 0x009900);
-
-qhull.assignPointsToFaces(points, mesh);
-
-function addHullViewport() {
-  var hullContainer = document.createElement('div');
-  hullContainer.classList.add('viewport');
-  document.body.appendChild(hullContainer);
-  var hullViewport = new Viewport(hullContainer);
-  new Trackball(hullViewport);
-  return hullViewport;
-}
-
-var popped;
-var debug = false;
-var i = 0;
-do {
-  var hullViewport;
-  if (i > 200) {
-    console.log(i);
-  }
-
-  popped = qhull.popNext(mesh);
-  // Final result
-  if (!popped) {
-    hullViewport = addHullViewport();
-    hullViewport.addMesh(mesh, 0x009900);
-    hullViewport.addPoints(points, 0.5, 0x000099);
-  } else if (debug) {
-    hullViewport = addHullViewport();
-    hullViewport.addMesh(mesh, 0x0000ff);
-
-    var remaining = mesh.faces.reduce(function(acc, face) {
-      if (face.points) {
-        acc = acc.concat(face.points);
+function filterMesh(mesh, fn) {
+  return {
+    vertices: mesh.vertices,
+    faces: mesh.faces.reduce(function(acc, f, i) {
+      if (fn(f,i)) {
+        acc.push(f);
       }
       return acc;
-    }, []);
-    hullViewport.addPoints(remaining, 0.5, 0x009900);
-    hullViewport.addPoints([popped], 0.5, 0x990000);
+    }, []),
+  };
+}
+
+function showFinalResult() {
+  beforeViewport.clear();
+  afterViewport.clear();
+  beforeViewport.addPoints(points, 0.5, 0x009900);
+  afterViewport.addPoints(points, 0.5, 0x009900);
+  afterViewport.addMesh(mesh, 0x0000ff);
+}
+
+function proceed() {
+  var result;
+  do {
+    result = qhull.iterate(mesh);
+  } while (result);
+  showFinalResult();
+}
+
+$('#randomize').click(function() {
+  randomize();
+});
+
+$('#generate').click(function() {
+  proceed();
+});
+
+$('#randomize_generate').click(function() {
+  randomize();
+  proceed();
+});
+
+$('#step').click(function() {
+
+  var result = qhull.iterate(mesh);
+  if (result) {
+    beforeViewport.clear();
+    afterViewport.clear();
+
+    var mesh0 = result.mesh0;
+    var oldMeshWithoutLightFaces = filterMesh(
+      mesh0,
+      function(f, i) {
+        return result.lightFaces.indexOf(i) === -1;
+      });
+
+    var lightFaceMesh = filterMesh(
+      mesh0,
+      function(f, i) {
+        return result.lightFaces.indexOf(i) !== -1;
+      });
+
+    beforeViewport.addMesh(oldMeshWithoutLightFaces, 0x0000ff);
+    beforeViewport.addMesh(lightFaceMesh, 0xffff00);
+    beforeViewport.addPoints([result.point], 1.0, 0xff0000);
+    beforeViewport.addPoints(points, 0.5, 0x009900);
+
+    var newMeshWithOldFaces = filterMesh(
+      mesh,
+      function(f, i) {
+        return result.newFaces.indexOf(i) === -1;
+      });
+    var newMeshWithNewFaces = filterMesh(
+      mesh,
+      function(f, i) {
+        return result.newFaces.indexOf(i) !== -1;
+      });
+
+    afterViewport.addPoints([result.point], 0.5, 0xff0000);
+    afterViewport.addPoints(points, 0.5, 0x009900);
+    afterViewport.addMesh(newMeshWithOldFaces, 0x0000ff);
+    afterViewport.addMesh(newMeshWithNewFaces, 0x00cccc);
+  } else {
+    showFinalResult();
+
   }
-  ++i;
-} while (popped && i < 1000);
+});
+
+randomize();
+
 },{"../../../lib/qhull":5,"../../../lib/vector":6,"./trackball":2,"./viewport":3}],2:[function(require,module,exports){
 
 function eventToPosition(event) {
@@ -93,7 +124,7 @@ function eventToPosition(event) {
   };
 }
 
-module.exports = function(viewport) {
+module.exports = function(viewports) {
 
   var minDistance = 3;
   var maxDistance = 10000;
@@ -175,20 +206,23 @@ module.exports = function(viewport) {
       position.distance = newDistance;
     }
 
-    viewport.camera.position.x = position.distance * Math.sin(position.elevation) * Math.cos(position.azimuth);
-    viewport.camera.position.y = position.distance * Math.sin(position.elevation) * Math.sin(position.azimuth);
-    viewport.camera.position.z = position.distance * Math.cos(position.elevation);
-
-    viewport.camera.up = new THREE.Vector3(0,0,1);
-    viewport.camera.lookAt(new THREE.Vector3(0,0,0));
+    viewports.forEach(function(viewport) {
+      viewport.camera.position.x = position.distance * Math.sin(position.elevation) * Math.cos(position.azimuth);
+      viewport.camera.position.y = position.distance * Math.sin(position.elevation) * Math.sin(position.azimuth);
+      viewport.camera.position.z = position.distance * Math.cos(position.elevation);
+      viewport.camera.up = new THREE.Vector3(0,0,1);
+      viewport.camera.lookAt(new THREE.Vector3(0,0,0));
+    });
 
   };
 
-  viewport.container.addEventListener('mousemove', that.mousemove, false);
-  viewport.container.addEventListener('mousedown', that.mousedown, false);
-  viewport.container.addEventListener('mouseup', that.mouseup, false);
-  viewport.container.addEventListener('mouseout', that.mouseup, false);
-  viewport.container.addEventListener('mousewheel', that.mousewheel, false);
+  viewports.forEach(function(viewport) {
+    viewport.container.addEventListener('mousemove', that.mousemove, false);
+    viewport.container.addEventListener('mousedown', that.mousedown, false);
+    viewport.container.addEventListener('mouseup', that.mouseup, false);
+    viewport.container.addEventListener('mouseout', that.mouseup, false);
+    viewport.container.addEventListener('mousewheel', that.mousewheel, false);
+  });
 
   animate();
 
@@ -201,17 +235,21 @@ module.exports = function(viewport) {
 module.exports = function(container) {
 
   var camera, renderer, light;
-  var containerWidth = 400, containerHeight = 400;
-
   var that = this;
   that.container = container;
 
+  function onWindowResize() {
+    var containerWidth = $(container).width();
+    container.style.height = containerWidth + 'px';
+    camera.aspect = 1.0;
+    camera.updateProjectionMatrix();
+    renderer.setSize(containerWidth-1, containerWidth-1);
+    return containerWidth;
+  }
+
   function init() {
 
-    container.style.width  = containerWidth + 'px';
-    container.style.height = containerHeight + 'px';
-
-    camera = new THREE.PerspectiveCamera(70, containerWidth / containerHeight, 0.1, 10000 );
+    camera = new THREE.PerspectiveCamera(70, 1.0, 0.1, 10000 );
     that.camera = camera;
     camera.position.z = 40;
     camera.position.x = 40;
@@ -248,19 +286,14 @@ module.exports = function(container) {
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.sortObjects = false;
-    renderer.setSize(containerWidth, containerHeight);
     renderer.setClearColor(0xffffff, 1);
     container.appendChild(renderer.domElement);
 
     window.addEventListener('resize', onWindowResize, false);
-
+    onWindowResize();
   }
 
-  function onWindowResize() {
-    camera.aspect = containerWidth/containerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(containerWidth, containerHeight);
-  }
+
 
   function animate() {
     requestAnimationFrame(animate);
@@ -308,14 +341,6 @@ module.exports = function(container) {
       particles,
       pMaterial);
     that.exampleObj.add(particleSystem);
-
-    // points.forEach(function(point) {
-    //   var mesh = new THREE.Mesh(
-    //     new THREE.SphereGeometry(size),
-    //     new THREE.MeshLambertMaterial({color: color}));
-    //   mesh.position = new THREE.Vector3(
-    //   that.exampleObj.add(mesh);
-    // });
   };
 
   this.addMesh = function(mesh, color) {
@@ -333,7 +358,12 @@ module.exports = function(container) {
         new THREE.MeshLambertMaterial({color: color, transparent: true, opacity: 0.5}),
         new THREE.MeshBasicMaterial({color: color, wireframe: true, linewidth: 5}),
       ]));
+  };
 
+  this.clear = function() {
+    this.scene.remove(this.exampleObj);
+    this.exampleObj = new THREE.Object3D();
+    this.scene.add(this.exampleObj);
   };
 
   init();
@@ -452,44 +482,6 @@ function findMostDistantFromPlane(basePlane, points) {
   };
 }
 
-// Generate the convex hull of a set of points
-// points is an array of Vector objects
-// Returns the vertices and faces of the hull
-module.exports.setup = function(points) {
-
-  var extremePoints = findExtremePoints(points);
-  var mostDistantExtremePointIndices = findMostDistantExpremePointIndices(extremePoints);
-
-  // The remaining points with the most distant ones removed
-  // Sort so that the lower index remains consistent
-  mostDistantExtremePointIndices.sort();
-  var remaining = extremePoints.slice(0);
-  remaining.splice(mostDistantExtremePointIndices[1], 1);
-  remaining.splice(mostDistantExtremePointIndices[0], 1);
-
-  var a = extremePoints[mostDistantExtremePointIndices[0]];
-  var b = extremePoints[mostDistantExtremePointIndices[1]];
-  var c = findMostDistantToLine(remaining, a, b);
-
-  // Correct normal for positive apex distance
-  var basePlane = new Plane(a,c,b);
-  var apex = findMostDistantFromPlane(basePlane, points);
-
-  // Correct normal so that right-hand base normal points away from apex
-  var base = apex.distance > 0 ? [a,b,c] : [a,c,b];
-  console.log(apex.distance);
-
-  var tetrahedron = {
-    vertices: base.concat(apex.point),
-    faces: [{a:0, b:1, c:2}, {a:0, b:3, c:1}, {a:3, b:2, c:1}, {a:0, b:2, c:3}]
-  };
-  return {
-    base: base,
-    apex: apex,
-    tetrahedron: tetrahedron,
-  };
-
-};
 
 // Assign points to faces, by assigning point to first face it is in front of
 // Return an array of the same size as the mesh faces array, with the points
@@ -594,7 +586,54 @@ function findHorizonEdges(mesh, lightFaceIndices) {
   return horizonEdges;
 }
 
-module.exports.popNext = function(mesh) {
+
+// Initialise the hull algorithm with a set 
+// of point. It will create an initial tetrahedron and assign the points
+// to the faces of the tetrahedron
+module.exports.init = function(points) {
+
+  var extremePoints = findExtremePoints(points);
+  var mostDistantExtremePointIndices = findMostDistantExpremePointIndices(extremePoints);
+
+  // The remaining points with the most distant ones removed
+  // Sort so that the lower index remains consistent
+  mostDistantExtremePointIndices.sort();
+  var remaining = extremePoints.slice(0);
+  remaining.splice(mostDistantExtremePointIndices[1], 1);
+  remaining.splice(mostDistantExtremePointIndices[0], 1);
+
+  var a = extremePoints[mostDistantExtremePointIndices[0]];
+  var b = extremePoints[mostDistantExtremePointIndices[1]];
+  var c = findMostDistantToLine(remaining, a, b);
+
+  // Correct normal for positive apex distance
+  var basePlane = new Plane(a,c,b);
+  var apex = findMostDistantFromPlane(basePlane, points);
+
+  // Correct normal so that right-hand base normal points away from apex
+  var base = apex.distance > 0 ? [a,b,c] : [a,c,b];
+  var mesh = {
+    vertices: base.concat(apex.point),
+    faces: [{a:0, b:1, c:2}, {a:0, b:3, c:1}, {a:3, b:2, c:1}, {a:0, b:2, c:3}]
+  };
+
+  assignPointsToFaces(points, mesh);
+  return mesh;
+
+};
+
+// Iterate the algorithm by findind the next face with points
+// and adding new faces from the horizon to the most distant point
+//
+// returns the selected point and light face indices for debugging
+// or `undefined` if there are no more points.
+module.exports.iterate = function(mesh) {
+  // capture the mesh before iteration
+  var mesh0 = {
+    vertices: mesh.vertices.slice(0),
+    faces: mesh.faces.slice(0),
+  };
+
   // Find the next face in the mesh with points
   for (var i = 0; i < mesh.faces.length; ++i) {
     var face = mesh.faces[i];
@@ -607,8 +646,9 @@ module.exports.popNext = function(mesh) {
 
       // Create new faces using the point and the horinzon edges
       var newVertexIndex = mesh.vertices.push(mostDistant.point) - 1;
-      horizonEdges.forEach(function(edge) {
-        mesh.faces.push({a: edge[0], b: edge[1], c: newVertexIndex});
+      var newFaces = horizonEdges.map(function(edge) {
+        var index = mesh.faces.push({a: edge[0], b: edge[1], c: newVertexIndex}) - 1;
+        return index;
       });
 
       // Reclassify all the point of the light faces. Current face's points
@@ -624,16 +664,27 @@ module.exports.popNext = function(mesh) {
         }
       });
 
-      // Remove the light faces from the mesh
-      mesh.faces = mesh.faces.reduce(function(acc, f, i) {
-        if (lightFaces.indexOf(i) === -1) {
-          acc.push(f);
+      // Remove the light faces from the mesh and update the indices
+      // of the new faces
+      var prunedFaces = [];
+      for (var k = 0; k < mesh.faces.length; ++k) {
+        if (lightFaces.indexOf(k) === -1) {
+          prunedFaces.push(mesh.faces[k]);
+        } else {
+          newFaces = newFaces.map(function(index) {
+            return index >= k ? index-1 : index;
+          });
         }
-        return acc;
-      }, []);
+      }
+      mesh.faces = prunedFaces;
 
       assignPointsToFaces(remaining, mesh);
-      return mostDistant.point;
+      return {
+        point: mostDistant.point,
+        lightFaces: lightFaces,
+        newFaces: newFaces,
+        mesh0: mesh0,
+      };
     }
   }
   return undefined;

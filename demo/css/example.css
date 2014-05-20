@@ -1,0 +1,29 @@
+body {
+  font-family: Arial, 'Sans Serif';
+  background-color: #f0f0f0;
+}
+
+#controls {
+  padding: 10px;
+  font-size: 14px;
+}
+
+.viewport {
+  position: absolute;
+  background-color: white;
+  border: solid thin #ccc;
+  display: inline-block;
+  width: 50%;
+  margin: -1px;
+}
+
+.viewport.before {
+  left: 0;
+  top: 50px;
+}
+
+.viewport.after {
+  right: 0;
+  top: 50px;
+}
+

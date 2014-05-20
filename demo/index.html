@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>qhull examples</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/reset.css">
+    <link rel="stylesheet" type="text/css" href="css/example.css">
+    <script src="js/lib/three.min.js"></script>
+    <script src="js/lib/jquery-2.1.1.min.js"></script>
+  </head>
+  <body>
+    <div id="controls">
+      points:
+      <input id="n_points" type="number" min="4" max="10000" value="10"/>
+      <input id="randomize" type="button" value="randomize"/>
+      <input id="step" type="button" value="step"/>
+      <input id="generate" type="button" value="generate"/>
+      <input id="randomize_generate" type="button" value="randomize &amp; generate"/>
+    </div>
+    <div class="viewports">
+      <div class="viewport before"></div>
+      <div class="viewport after"></div>
+    </div>
+    <script src="js/index.js"></script>
+  </body>
+</html>

@@ -20,9 +20,9 @@ module.exports = function(grunt) {
           'test/**/*.js',
         ]
       },
-      examples: {
+      demo: {
         src: [
-          'examples/js/src/*.js',
+          'demo/js/src/*.js',
         ]
       },
     },
@@ -42,19 +42,9 @@ module.exports = function(grunt) {
     },
 
     browserify: {
-      options: {
-        // debug: true,
-        shim: {
-          jquery: {
-            path: 'public/lib/jquery-2.1.0.min.js',
-            exports: '$'
-          },
-        },
-        external: ['jquery']
-      },
-      examples: {
+      demo: {
         files: {
-          'examples/js/index.js': ['examples/js/src/example.js'],
+          'demo/js/index.js': ['demo/js/src/demo.js'],
         },
       },
     },
@@ -66,15 +56,15 @@ module.exports = function(grunt) {
       },
       lib: {
         files: '<%= jshint.lib.src %>',
-        tasks: ['jshint:lib', 'simplemocha:unit', 'browserify:examples'],
+        tasks: ['jshint:lib', 'simplemocha:unit', 'browserify:demo'],
       },
       unit: {
         files: '<%= jshint.unit.src %>',
         tasks: ['jshint:unit', 'simplemocha:unit'],
       },
-      examples: {
-        files: '<%= jshint.examples.src %>',
-        tasks: ['jshint:examples', 'browserify:examples'],
+      demo: {
+        files: '<%= jshint.demo.src %>',
+        tasks: ['jshint:demo', 'browserify:demo'],
       },
     },
 

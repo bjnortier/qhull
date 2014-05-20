@@ -6,7 +6,7 @@ function eventToPosition(event) {
   };
 }
 
-module.exports = function(viewport) {
+module.exports = function(viewports) {
 
   var minDistance = 3;
   var maxDistance = 10000;
@@ -88,20 +88,23 @@ module.exports = function(viewport) {
       position.distance = newDistance;
     }
 
-    viewport.camera.position.x = position.distance * Math.sin(position.elevation) * Math.cos(position.azimuth);
-    viewport.camera.position.y = position.distance * Math.sin(position.elevation) * Math.sin(position.azimuth);
-    viewport.camera.position.z = position.distance * Math.cos(position.elevation);
-
-    viewport.camera.up = new THREE.Vector3(0,0,1);
-    viewport.camera.lookAt(new THREE.Vector3(0,0,0));
+    viewports.forEach(function(viewport) {
+      viewport.camera.position.x = position.distance * Math.sin(position.elevation) * Math.cos(position.azimuth);
+      viewport.camera.position.y = position.distance * Math.sin(position.elevation) * Math.sin(position.azimuth);
+      viewport.camera.position.z = position.distance * Math.cos(position.elevation);
+      viewport.camera.up = new THREE.Vector3(0,0,1);
+      viewport.camera.lookAt(new THREE.Vector3(0,0,0));
+    });
 
   };
 
-  viewport.container.addEventListener('mousemove', that.mousemove, false);
-  viewport.container.addEventListener('mousedown', that.mousedown, false);
-  viewport.container.addEventListener('mouseup', that.mouseup, false);
-  viewport.container.addEventListener('mouseout', that.mouseup, false);
-  viewport.container.addEventListener('mousewheel', that.mousewheel, false);
+  viewports.forEach(function(viewport) {
+    viewport.container.addEventListener('mousemove', that.mousemove, false);
+    viewport.container.addEventListener('mousedown', that.mousedown, false);
+    viewport.container.addEventListener('mouseup', that.mouseup, false);
+    viewport.container.addEventListener('mouseout', that.mouseup, false);
+    viewport.container.addEventListener('mousewheel', that.mousewheel, false);
+  });
 
   animate();
 
