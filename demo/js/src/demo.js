@@ -41,7 +41,8 @@ function showFinalResult() {
   beforeViewport.clear();
   afterViewport.clear();
   beforeViewport.addPoints(points, 0.5, 0x009900);
-  beforeViewport.addMesh(mesh, 0x0000ff);
+  afterViewport.addPoints(points, 0.5, 0x009900);
+  afterViewport.addMesh(mesh, 0x0000ff);
 }
 
 function step() {
