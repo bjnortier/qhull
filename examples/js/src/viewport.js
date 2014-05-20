@@ -96,13 +96,27 @@ module.exports = function(container) {
 
   this.addPoints = function(points, size, color) {
 
-    points.forEach(function(point) {
-      var mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(size),
-        new THREE.MeshLambertMaterial({color: color}));
-      mesh.position = new THREE.Vector3(point.x, point.y, point.z);
-      that.exampleObj.add(mesh);
+    var particles = new THREE.Geometry();
+    particles.vertices = points.map(function(point) {
+      return new THREE.Vector3(point.x, point.y, point.z);
     });
+
+    var pMaterial = new THREE.ParticleBasicMaterial({
+      color: color,
+      size: size,
+    });
+    var particleSystem = new THREE.ParticleSystem(
+      particles,
+      pMaterial);
+    that.exampleObj.add(particleSystem);
+
+    // points.forEach(function(point) {
+    //   var mesh = new THREE.Mesh(
+    //     new THREE.SphereGeometry(size),
+    //     new THREE.MeshLambertMaterial({color: color}));
+    //   mesh.position = new THREE.Vector3(
+    //   that.exampleObj.add(mesh);
+    // });
   };
 
   this.addMesh = function(mesh, color) {

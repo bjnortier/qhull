@@ -11,44 +11,66 @@ document.body.appendChild(setupContainer);
 var setupViewport = new Viewport(setupContainer);
 new Trackball(setupViewport);
 
-var points = [
-  new Vector(0,0,0),
-  new Vector(10,0,0),
-  new Vector(10,20,0),
-  new Vector(0,20,0),
-  new Vector(0,0,30),
-  new Vector(10,0,30),
-  new Vector(10,20,30),
-  new Vector(0,20,30),
-];
+// var points = [
+//   new Vector(0,0,0),
+//   new Vector(10,0,0),
+//   new Vector(10,20,0),
+//   new Vector(0,20,0),
+//   new Vector(0,0,30),
+//   new Vector(10,0,30),
+//   new Vector(10,20,30),
+//   new Vector(0,20,30),
+// ];
 
-points = [];
-for (var i = 0; i < 20; ++i) {
-  points.push(new Vector(Math.random()*20, Math.random()*20, Math.random()*20));
+var points = [];
+for (var i = 0; i < 1000; ++i) {
+  points.push(new Vector(Math.random()*20-10, Math.random()*20-10, Math.random()*20-10));
 }
 
-setupViewport.addPoints(points, 0.2, 0x00ff00);
+setupViewport.addPoints(points, 0.5, 0x009900);
 
 var setup = qhull.setup(points);
 console.log(setup);
-
-setupViewport.addPoints(setup.base, 0.5, 0x0000ff);
-setupViewport.addPoints([setup.apex.point], 0.5, 0xff0000);
-setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
-
 var mesh = setup.tetrahedron;
+
+setupViewport.addMesh(setup.tetrahedron, 0x0000ff);
+var remaining = mesh.faces.reduce(function(acc, face) {
+  if (face.points) {
+    acc = acc.concat(face.points);
+  }
+  return acc;
+}, []);
+
+setupViewport.addPoints(remaining, 0.5, 0x009900);
+
 qhull.assignPointsToFaces(points, mesh);
 
+function addHullViewport() {
+  var hullContainer = document.createElement('div');
+  hullContainer.classList.add('viewport');
+  document.body.appendChild(hullContainer);
+  var hullViewport = new Viewport(hullContainer);
+  new Trackball(hullViewport);
+  return hullViewport;
+}
+
 var popped;
+var debug = false;
+var i = 0;
 do {
+  var hullViewport;
+  if (i > 200) {
+    console.log(i);
+  }
 
   popped = qhull.popNext(mesh);
-  if (popped) {
-    var hullContainer = document.createElement('div');
-    hullContainer.classList.add('viewport');
-    document.body.appendChild(hullContainer);
-    var hullViewport = new Viewport(hullContainer);
-    new Trackball(hullViewport);
+  // Final result
+  if (!popped) {
+    hullViewport = addHullViewport();
+    hullViewport.addMesh(mesh, 0x009900);
+    hullViewport.addPoints(points, 0.5, 0x000099);
+  } else if (debug) {
+    hullViewport = addHullViewport();
     hullViewport.addMesh(mesh, 0x0000ff);
 
     var remaining = mesh.faces.reduce(function(acc, face) {
@@ -57,12 +79,11 @@ do {
       }
       return acc;
     }, []);
-
-    hullViewport.addPoints(remaining, 0.2, 0x00ff00);
-    hullViewport.addPoints([popped], 0.5, 0xff0000);
+    hullViewport.addPoints(remaining, 0.5, 0x009900);
+    hullViewport.addPoints([popped], 0.5, 0x990000);
   }
-
-} while (popped);
+  ++i;
+} while (popped && i < 1000);
 },{"../../../lib/qhull":5,"../../../lib/vector":6,"./trackball":2,"./viewport":3}],2:[function(require,module,exports){
 
 function eventToPosition(event) {
@@ -76,8 +97,8 @@ module.exports = function(viewport) {
 
   var minDistance = 3;
   var maxDistance = 10000;
-  var position = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 40 };
-  var target = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 40, scenePosition: new THREE.Vector3()};
+  var position = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 20 };
+  var target = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 20, scenePosition: new THREE.Vector3()};
   var lastMousePosition, mouseDownPosition, targetOnDown, state;
   var damping = 0.25;
   var that = this;
@@ -274,13 +295,27 @@ module.exports = function(container) {
 
   this.addPoints = function(points, size, color) {
 
-    points.forEach(function(point) {
-      var mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(size),
-        new THREE.MeshLambertMaterial({color: color}));
-      mesh.position = new THREE.Vector3(point.x, point.y, point.z);
-      that.exampleObj.add(mesh);
+    var particles = new THREE.Geometry();
+    particles.vertices = points.map(function(point) {
+      return new THREE.Vector3(point.x, point.y, point.z);
     });
+
+    var pMaterial = new THREE.ParticleBasicMaterial({
+      color: color,
+      size: size,
+    });
+    var particleSystem = new THREE.ParticleSystem(
+      particles,
+      pMaterial);
+    that.exampleObj.add(particleSystem);
+
+    // points.forEach(function(point) {
+    //   var mesh = new THREE.Mesh(
+    //     new THREE.SphereGeometry(size),
+    //     new THREE.MeshLambertMaterial({color: color}));
+    //   mesh.position = new THREE.Vector3(
+    //   that.exampleObj.add(mesh);
+    // });
   };
 
   this.addMesh = function(mesh, color) {
@@ -335,6 +370,9 @@ var Vector = require('./vector');
 var Plane = require('./plane');
 
 module.exports.Vector = Vector;
+
+// Distance from the plane considered on the plane
+var EPS = 1e-6;
 
 // Find the 6 extreme points
 function findExtremePoints(points) {
@@ -465,7 +503,7 @@ function assignPointsToFaces(points, mesh) {
     for (var k = 0; k < faces.length; ++k) {
       var face = faces[k];
       var plane = new Plane(vertices[face.a], vertices[face.b], vertices[face.c]);
-      if (plane.pointDistance(point) > 0) {
+      if (plane.pointDistance(point) > EPS) {
         if (!faces[k].hasOwnProperty('points')) {
           faces[k].points = [];
         }
@@ -513,7 +551,7 @@ function findLightFaces(point, mesh, lightFaces) {
       var adjacentFaceIndex = adjacentFaceIndices[i];
       var face = mesh.faces[adjacentFaceIndex];
       var plane = new Plane(mesh.vertices[face.a], mesh.vertices[face.b], mesh.vertices[face.c]);
-      if ((plane.pointDistance(point) > 0) && (lightFaces.indexOf(adjacentFaceIndex) === -1)) {
+      if ((plane.pointDistance(point) > EPS) && (lightFaces.indexOf(adjacentFaceIndex) === -1)) {
         lightFaces.push(adjacentFaceIndex);
         added = true;
       }
@@ -573,6 +611,19 @@ module.exports.popNext = function(mesh) {
         mesh.faces.push({a: edge[0], b: edge[1], c: newVertexIndex});
       });
 
+      // Reclassify all the point of the light faces. Current face's points
+      // and all the light faces (wihout the current face)
+      var remaining = points;
+      remaining.splice(mostDistant.index, 1);
+      lightFaces.forEach(function(faceIndex) {
+        if (faceIndex !== i) {
+          var face = mesh.faces[faceIndex];
+          if (face.points) {
+            remaining = remaining.concat(face.points);
+          }
+        }
+      });
+
       // Remove the light faces from the mesh
       mesh.faces = mesh.faces.reduce(function(acc, f, i) {
         if (lightFaces.indexOf(i) === -1) {
@@ -581,17 +632,7 @@ module.exports.popNext = function(mesh) {
         return acc;
       }, []);
 
-      // The remaining points are the point of the current face, with the current
-      // point removed, and with the points of the lightfaces added
-      var remaining = points.slice(0);
-      remaining.splice(mostDistant.index, 1);
-      lightFaces.forEach(function(f) {
-        if (f.points) {
-          remaining.concat(f.points);
-        }
-      });
       assignPointsToFaces(remaining, mesh);
-
       return mostDistant.point;
     }
   }

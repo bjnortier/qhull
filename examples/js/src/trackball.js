@@ -10,8 +10,8 @@ module.exports = function(viewport) {
 
   var minDistance = 3;
   var maxDistance = 10000;
-  var position = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 40 };
-  var target = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 40, scenePosition: new THREE.Vector3()};
+  var position = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 20 };
+  var target = { azimuth: Math.PI/4, elevation: Math.PI*3/8, distance: 20, scenePosition: new THREE.Vector3()};
   var lastMousePosition, mouseDownPosition, targetOnDown, state;
   var damping = 0.25;
   var that = this;
