@@ -92,11 +92,10 @@ function step() {
 }
 
 function proceed() {
-  var result;
-  do {
-    result = qhull.iterate(mesh);
-  } while (result);
-  showFinalResult();
+  var result = step();
+  if (result) {
+    setTimeout(proceed, 0);
+  }
 }
 
 $('#randomize').click(function() {
