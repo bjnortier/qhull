@@ -11,19 +11,16 @@ module.exports = function(grunt) {
         src: 'gruntfile.js'
       },
       lib: {
-        src: [
-          'lib/**/*.js',
-        ]
+        src: 'lib/**/*.js'
       },
       unit: {
-        src: [
-          'test/**/*.js',
-        ]
+        src: 'test/**/*.js'
+      },
+      global: {
+        src: 'build/global.js'
       },
       demo: {
-        src: [
-          'demo/js/src/*.js',
-        ]
+        src: 'demo/js/src/*.js'
       },
     },
 
@@ -42,9 +39,14 @@ module.exports = function(grunt) {
     },
 
     browserify: {
+      global: {
+        files: {
+          'build/qhull.js': ['build/global.js'],
+        },
+      },
       demo: {
         files: {
-          'demo/js/index.js': ['demo/js/src/demo.js'],
+          'demo/js/build.js': ['demo/js/src/demo.js'],
         },
       },
     },
@@ -61,6 +63,10 @@ module.exports = function(grunt) {
       unit: {
         files: '<%= jshint.unit.src %>',
         tasks: ['jshint:unit', 'simplemocha:unit'],
+      },
+      global: {
+        files: '<%= jshint.global.src %>',
+        tasks: ['jshint:global', 'browserify:global'],
       },
       demo: {
         files: '<%= jshint.demo.src %>',

@@ -46,29 +46,7 @@ function showFinalResult() {
   afterViewport.addMesh(mesh, 0x0000ff);
 }
 
-function proceed() {
-  var result;
-  do {
-    result = qhull.iterate(mesh);
-  } while (result);
-  showFinalResult();
-}
-
-$('#randomize').click(function() {
-  randomize();
-});
-
-$('#generate').click(function() {
-  proceed();
-});
-
-$('#randomize_generate').click(function() {
-  randomize();
-  proceed();
-});
-
-$('#step').click(function() {
-
+function step() {
   var result = qhull.iterate(mesh);
   if (result) {
     beforeViewport.clear();
@@ -109,8 +87,33 @@ $('#step').click(function() {
     afterViewport.addMesh(newMeshWithNewFaces, 0x00cccc);
   } else {
     showFinalResult();
-
   }
+  return result;
+}
+
+function proceed() {
+  var result;
+  do {
+    result = qhull.iterate(mesh);
+  } while (result);
+  showFinalResult();
+}
+
+$('#randomize').click(function() {
+  randomize();
+});
+
+$('#generate').click(function() {
+  proceed();
+});
+
+$('#randomize_generate').click(function() {
+  randomize();
+  proceed();
+});
+
+$('#step').click(function() {
+  step();
 });
 
 randomize();
