@@ -1,8 +1,8 @@
 {
   "name": "qhull",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A Non-robust Javascript 3D Quickhull Implementation",
-  "main": "lib/index.js",
+  "main": "lib/qhull.js",
   "scripts": {
     "test": "grunt test"
   },
@@ -24,6 +24,8 @@
     "grunt-contrib-watch": "~0.6.1",
     "grunt-simple-mocha": "~0.4.0",
     "grunt-contrib-jshint": "~0.10.0",
-    "chai": "~1.9.1"
+    "chai": "~1.9.1",
+    "browserify": "~4.1.5",
+    "grunt-browserify": "~2.1.0"
   }
 }

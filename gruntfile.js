@@ -11,29 +11,16 @@ module.exports = function(grunt) {
         src: 'gruntfile.js'
       },
       lib: {
-        src: [
-          'lib/**/*.js',
-        ]
+        src: 'lib/**/*.js'
       },
       unit: {
-        src: [
-          'test/**/*.js',
-        ]
+        src: 'test/**/*.js'
       },
-    },
-
-    watch: {
-      gruntfile: {
-        files: '<%= jshint.gruntfile.src %>',
-        tasks: ['jshint:gruntfile']
+      global: {
+        src: 'build/global.js'
       },
-      lib: {
-        files: '<%= jshint.lib.src %>',
-        tasks: ['jshint:lib', 'simplemocha:unit'],
-      },
-      unit: {
-        files: '<%= jshint.unit.src %>',
-        tasks: ['jshint:unit', 'simplemocha:unit'],
+      demo: {
+        src: 'demo/js/src/*.js'
       },
     },
 
@@ -51,12 +38,48 @@ module.exports = function(grunt) {
       },
     },
 
+    browserify: {
+      global: {
+        files: {
+          'build/qhull.js': ['build/global.js'],
+        },
+      },
+      demo: {
+        files: {
+          'demo/js/build.js': ['demo/js/src/demo.js'],
+        },
+      },
+    },
+
+    watch: {
+      gruntfile: {
+        files: '<%= jshint.gruntfile.src %>',
+        tasks: ['jshint:gruntfile']
+      },
+      lib: {
+        files: '<%= jshint.lib.src %>',
+        tasks: ['jshint:lib', 'simplemocha:unit', 'browserify:demo'],
+      },
+      unit: {
+        files: '<%= jshint.unit.src %>',
+        tasks: ['jshint:unit', 'simplemocha:unit'],
+      },
+      global: {
+        files: '<%= jshint.global.src %>',
+        tasks: ['jshint:global', 'browserify:global'],
+      },
+      demo: {
+        files: '<%= jshint.demo.src %>',
+        tasks: ['jshint:demo', 'browserify:demo'],
+      },
+    },
 
   });
 
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-simple-mocha');
+  grunt.loadNpmTasks('grunt-browserify');
 
   // Unit testing
   grunt.registerTask('unit', ['jshint:lib','jshint:unit', 'simplemocha:unit']);
