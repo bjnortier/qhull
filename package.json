@@ -1,6 +1,6 @@
 {
   "name": "qhull",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Non-robust Javascript 3D Quickhull Implementation",
   "main": "lib/qhull.js",
   "scripts": {
