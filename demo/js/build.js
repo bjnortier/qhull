@@ -703,7 +703,7 @@ module.exports.generate = function(points) {
     result = iterate(mesh);
   } while (result);
   return mesh;
-}
+};
 },{"./plane":4,"./vector":6}],6:[function(require,module,exports){
 "use strict";
 

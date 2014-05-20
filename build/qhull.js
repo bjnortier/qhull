@@ -220,7 +220,7 @@ function findHorizonEdges(mesh, lightFaceIndices) {
 // Initialise the hull algorithm with a set 
 // of point. It will create an initial tetrahedron and assign the points
 // to the faces of the tetrahedron
-module.exports.init = function(points) {
+function init(points) {
 
   var extremePoints = findExtremePoints(points);
   var mostDistantExtremePointIndices = findMostDistantExpremePointIndices(extremePoints);
@@ -250,14 +250,14 @@ module.exports.init = function(points) {
   assignPointsToFaces(points, mesh);
   return mesh;
 
-};
+}
 
 // Iterate the algorithm by findind the next face with points
 // and adding new faces from the horizon to the most distant point
 //
 // returns the selected point and light face indices for debugging
 // or `undefined` if there are no more points.
-module.exports.iterate = function(mesh) {
+function iterate(mesh) {
   // capture the mesh before iteration
   var mesh0 = {
     vertices: mesh.vertices.slice(0),
@@ -318,6 +318,19 @@ module.exports.iterate = function(mesh) {
     }
   }
   return undefined;
+}
+
+module.exports.init = init;
+module.exports.iterate = iterate;
+
+// Create the convex hull fomr the points
+module.exports.generate = function(points) {
+  var mesh = init(points);
+  var result;
+  do {
+    result = iterate(mesh);
+  } while (result);
+  return mesh;
 };
 },{"./plane":2,"./vector":4}],4:[function(require,module,exports){
 "use strict";

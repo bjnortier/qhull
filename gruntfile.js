@@ -83,7 +83,6 @@ module.exports = function(grunt) {
 
   // Unit testing
   grunt.registerTask('unit', ['jshint:lib','jshint:unit', 'simplemocha:unit']);
-  grunt.registerTask('test', ['unit']);
-  grunt.registerTask('default', ['test']);
+  grunt.registerTask('default', ['jshint', 'unit', 'browserify']);
 
 };
