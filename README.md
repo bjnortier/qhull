@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/bjnortier/qhull.png?branch=master)](https://travis-ci.org/bjnortier/qhull)
+
 # qhull
 
 A *Non-robust* Javascript 3D Quickhull Implementation
