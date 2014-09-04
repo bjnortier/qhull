@@ -4,7 +4,7 @@
 
 A *Non-robust* Javascript 3D Quickhull Implementation
 
-The best description of the Quickhull algorithm can be found here:
+The best description of the Quickhull algorithm I found is here:
 http://thomasdiewald.com/blog/?p=1888
 
 and the paper describing the algorithm in detail can be found here:
